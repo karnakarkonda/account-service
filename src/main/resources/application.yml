@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: account-service
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/banksphere_account
+    username: root
+    password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8081
+
+customer:
+  service:
+    url: http://localhost:8080
+
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          customer-service:
+            connectTimeout: 3000  # time to establish a connection to the customer-service
+            readTimeout: 5000    # time to wait for a response from the customer-service after the connection is established
+
