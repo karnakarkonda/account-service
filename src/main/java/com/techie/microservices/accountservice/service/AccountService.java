@@ -3,6 +3,7 @@ package com.techie.microservices.accountservice.service;
 import com.techie.microservices.accountservice.client.CustomerServiceClient;
 import com.techie.microservices.accountservice.dto.AccountCreationRequest;
 import com.techie.microservices.accountservice.dto.AccountCreationResponse;
+import com.techie.microservices.accountservice.dto.AccountDetailsResponse;
 import com.techie.microservices.accountservice.exception.CustomerNotFoundException;
 import com.techie.microservices.accountservice.exception.CustomerServiceIntegrationException;
 import com.techie.microservices.accountservice.exception.CustomerServiceUnavailableException;
@@ -58,6 +59,9 @@ public class AccountService {
         }
     }
 
+    public AccountDetailsResponse getAccount(String accountNumber) {
+        return accountPersistenceService.getAccount(accountNumber);
+    }
 
 }
 

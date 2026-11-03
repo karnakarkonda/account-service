@@ -14,7 +14,7 @@ public class AccountConcurrencyTest {
 
         int numberOfRequests = 50;
 
-        String customerId = "858d18ad-0392-4c10-90d4-9f26b927454a";
+        String customerId = "62e357ba-8408-4e4c-a72c-219bfe122983";
 
         HttpClient client = HttpClient.newHttpClient();
 

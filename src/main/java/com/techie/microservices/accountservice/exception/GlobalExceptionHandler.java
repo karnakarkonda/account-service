@@ -1,5 +1,6 @@
 package com.techie.microservices.accountservice.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,7 +9,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import tools.jackson.databind.exc.InvalidFormatException;
-
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -26,17 +26,32 @@ public class GlobalExceptionHandler {
 
         Map<String, String> errors = new HashMap<>();
 
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error ->
+                        errors.put(error.getField(), error.getDefaultMessage()));
 
-        ErrorResponse response = new ErrorResponse();
-        response.setStatus(HttpStatus.BAD_REQUEST.value());
-        response.setMessage("Validation failed");
-        response.setTimestamp(LocalDateTime.now());
+        log.warn("Validation failed: {}", errors);
+
+        ErrorResponse response = buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed"
+        );
         response.setErrors(errors);
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
+            ConstraintViolationException ex) {
+
+        log.warn("Constraint violation: {}", ex.getMessage());
+
+        return ResponseEntity.badRequest()
+                .body(buildErrorResponse(
+                        HttpStatus.BAD_REQUEST,
+                        ex.getMessage()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -69,34 +84,26 @@ public class GlobalExceptionHandler {
                         allowedValues
                 );
             }
-
         }
 
         log.warn("Invalid request payload: {}", message);
 
-        ErrorResponse response = new ErrorResponse();
-        response.setStatus(HttpStatus.BAD_REQUEST.value());
-        response.setMessage(message);
-        response.setTimestamp(LocalDateTime.now());
-
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.badRequest()
+                .body(buildErrorResponse(
+                        HttpStatus.BAD_REQUEST,
+                        message));
     }
 
     @ExceptionHandler(CustomerServiceUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleCustomerServiceUnavailableException(
             CustomerServiceUnavailableException ex) {
 
-        log.error("Customer service is unavailable: {}", ex.getMessage(), ex);
-
-        ErrorResponse response = new ErrorResponse();
-        response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
-        response.setMessage(
-                "Customer service is currently unavailable. Please try again later."
-        );
-        response.setTimestamp(LocalDateTime.now());
+        log.error("Customer service unavailable: {}", ex.getMessage(), ex);
 
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(response);
+                .body(buildErrorResponse(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "Customer service is currently unavailable. Please try again later."));
     }
 
     @ExceptionHandler(CustomerNotFoundException.class)
@@ -105,12 +112,57 @@ public class GlobalExceptionHandler {
 
         log.warn("Customer not found: {}", ex.getMessage());
 
-        ErrorResponse response = new ErrorResponse();
-        response.setStatus(HttpStatus.NOT_FOUND.value());
-        response.setMessage("Customer not found.");
-        response.setTimestamp(LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(buildErrorResponse(
+                        HttpStatus.NOT_FOUND,
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccountAlreadyExists.class)
+    public ResponseEntity<ErrorResponse> handleAccountAlreadyExistsException(
+            AccountAlreadyExists ex) {
+
+        log.warn("Account already exists: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(buildErrorResponse(
+                        HttpStatus.CONFLICT,
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAccountNotFoundException(
+            AccountNotFoundException ex) {
+
+        log.warn("Account not found: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(response);
+                .body(buildErrorResponse(
+                        HttpStatus.NOT_FOUND,
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnhandledException(
+            Exception ex) {
+
+        log.error("Unexpected error occurred", ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(buildErrorResponse(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "An unexpected error occurred. Please try again later."));
+    }
+
+    private ErrorResponse buildErrorResponse(
+            HttpStatus status,
+            String message) {
+
+        ErrorResponse response = new ErrorResponse();
+        response.setStatus(status.value());
+        response.setMessage(message);
+        response.setTimestamp(LocalDateTime.now());
+
+        return response;
     }
 }
